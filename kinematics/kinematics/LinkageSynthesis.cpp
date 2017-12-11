@@ -105,20 +105,18 @@ namespace kinematics {
 	void LinkageSynthesis::particleFilter(std::vector<Solution>& solutions, const std::vector<glm::dvec2>& linkage_region_pts, const cv::Mat& dist_map, const BBox& dist_map_bbox, const std::vector<glm::dvec2>& linkage_avoidance_pts, const Object25D& moving_body, int num_particles, int num_iterations, bool record_file) {
 		BBox linkage_region_bbox = boundingBox(linkage_region_pts);
 
-		/*
 		std::vector<Particle> particles(solutions.size());
-
 		double max_cost = 0;
+
+		/*
 		for (int i = 0; i < solutions.size(); i++) {
-			double cost = calculateCost(solutions[i], moving_body, dist_map, dist_map_bbox, weights);
+			double cost = calculateCost(solutions[i], moving_body, dist_map, dist_map_bbox);
 			max_cost = std::max(max_cost, cost);
 			particles[i] = Particle(cost, solutions[i]);
 		}
 		*/
 
 		// augment
-		double max_cost = 0;
-		std::vector<Particle> particles(num_particles);
 		for (int i = 0; i < num_particles; i++) {
 			double cost = calculateCost(solutions[i % solutions.size()], moving_body, dist_map, dist_map_bbox);
 			max_cost = std::max(max_cost, cost);
@@ -159,10 +157,7 @@ namespace kinematics {
 			for (int i = 0; i < threads.size(); i++) {
 				threads[i].join();
 			}
-
-
-
-
+			
 			// merge the particles
 			for (int i = 0; i < threads.size(); i++) {
 				particles.insert(particles.end(), new_particles[i].begin(), new_particles[i].end());
@@ -229,8 +224,18 @@ namespace kinematics {
 		}
 	}
 
+	/**
+	 * Resample the particles based on their costs.
+	 *
+	 * @param particles				original set of particles
+	 * @param N						the number of new resampled particles
+	 * @param resampled_particles	new resmapled particles
+	 * @param max_cost				maximum cost, which is used to normalized the cost for calculating the weight
+	 */
 	void LinkageSynthesis::resample(std::vector<Particle> particles, int N, std::vector<Particle>& resampled_particles, double max_cost) {
 		// calculate the weights of particles
+		int best_index = -1;
+		double min_cost = std::numeric_limits<double>::max();
 		std::vector<double> weights(particles.size());
 		double weight_total = 0.0;
 		for (int i = 0; i < particles.size(); i++) {
@@ -240,7 +245,12 @@ namespace kinematics {
 			}
 			else {
 				w = std::exp(-particles[i].cost / max_cost * 20);
+				if (particles[i].cost < min_cost) {
+					min_cost = particles[i].cost;
+					best_index = i;
+				}
 			}
+
 			if (i == 0) {
 				weights[i] = w;
 			}
@@ -255,7 +265,8 @@ namespace kinematics {
 
 		// resample the particles based on their weights
 		resampled_particles.resize(N);
-		for (int i = 0; i < N; i++) {
+		resampled_particles[0] = particles[best_index];
+		for (int i = 1; i < N; i++) {
 			double r = genRand();
 			auto it = std::lower_bound(weights.begin(), weights.end(), r);
 			int index = it - weights.begin();

@@ -19,7 +19,7 @@ LinkageSynthesisOptionDialog::LinkageSynthesisOptionDialog(QWidget *parent) : QD
 	ui.lineEditTrajectoryWeight->setText("1");
 	ui.lineEditSizeWeight->setText("0.1");
 	ui.lineEditNumParticles->setText("100");
-	ui.lineEditNumIterations->setText("20");
+	ui.lineEditNumIterations->setText("10");
 	ui.checkBoxRecordFile->setChecked(false);
 
 	connect(ui.pushButtonOK, SIGNAL(clicked()), this, SLOT(onOK()));

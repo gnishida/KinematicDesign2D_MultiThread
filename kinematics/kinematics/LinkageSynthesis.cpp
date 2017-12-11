@@ -105,7 +105,7 @@ namespace kinematics {
 	void LinkageSynthesis::particleFilter(std::vector<Solution>& solutions, const std::vector<glm::dvec2>& linkage_region_pts, const cv::Mat& dist_map, const BBox& dist_map_bbox, const std::vector<glm::dvec2>& linkage_avoidance_pts, const Object25D& moving_body, int num_particles, int num_iterations, bool record_file) {
 		BBox linkage_region_bbox = boundingBox(linkage_region_pts);
 
-		std::vector<Particle> particles(solutions.size());
+		std::vector<Particle> particles(std::max((int)solutions.size(), num_particles));
 		double max_cost = 0;
 
 		/*
@@ -117,7 +117,7 @@ namespace kinematics {
 		*/
 
 		// augment
-		for (int i = 0; i < num_particles; i++) {
+		for (int i = 0; i < particles.size(); i++) {
 			double cost = calculateCost(solutions[i % solutions.size()], moving_body, dist_map, dist_map_bbox);
 			max_cost = std::max(max_cost, cost);
 			particles[i] = Particle(cost, solutions[i % solutions.size()]);

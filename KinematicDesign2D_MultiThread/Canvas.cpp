@@ -457,15 +457,16 @@ namespace canvas {
 			}
 
 			start = clock();
-
 			selected_solutions[i] = synthesis->findBestSolution(poses[i], solutions[i], enlarged_linkage_region_pts, dist_map, dist_map_bbox, linkage_avoidance_pts[i], moving_bodies[i], num_particles, num_iterations, record_file);
+			end = clock();
+			std::cout << "Elapsed: " << (double)(end - start) / CLOCKS_PER_SEC << " sec for particle filter." << std::endl;
+
+			std::cout << "Cost: " << synthesis->calculateCost(selected_solutions[i], moving_bodies[i], dist_map, dist_map_bbox) << std::endl;
+
 			std::vector<glm::dvec2> connector_pts;
 			kinematics::Kinematics kin = synthesis->constructKinematics(selected_solutions[i].points, moving_bodies[i], true, fixed_bodies, connector_pts);
 
 			kinematics.push_back(kin);
-
-			end = clock();
-			std::cout << "Elapsed: " << (double)(end - start) / CLOCKS_PER_SEC << " sec for finding the best solution. " << std::endl;
 		}
 
 		if (solutions[0].size() == 0) {

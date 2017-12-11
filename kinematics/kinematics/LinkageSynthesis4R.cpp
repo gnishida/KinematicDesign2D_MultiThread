@@ -63,10 +63,8 @@ namespace kinematics {
 
 			// merge the obtained solutions
 			for (int i = 0; i < sub_solutions.size(); i++) {
-				std::cout << sub_solutions[i].size() << ",";
 				solutions.insert(solutions.end(), sub_solutions[i].begin(), sub_solutions[i].end());
 			}
-			std::cout << std::endl;
 		}
 	}
 

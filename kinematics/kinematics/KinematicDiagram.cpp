@@ -286,11 +286,6 @@ namespace kinematics {
 					cp = kinematics::closestOffsetPoint(fixed_bodies[k].polygons[0].points, joint->pos, dist);
 				}
 
-				// extend the point a little into the rigid body				
-				/*glm::dvec2 v = glm::normalize(cp - joint->pos);
-				v *= options->link_width / 2;
-				cp += v;*/
-
 				double dist = glm::length(cp - joint->pos);
 				if (dist < min_dist) {
 					min_dist = dist;
@@ -334,11 +329,6 @@ namespace kinematics {
 				double dist;
 				closest_point = kinematics::closestOffsetPoint(moving_body, joint->pos, dist);
 			}
-
-			// extend the point a little into the rigid body
-			/*glm::dvec2 v1 = glm::normalize(closest_point - joint->pos);
-			v1 *= options->link_width / 2;
-			closest_point += v1;*/
 
 			// Create the base of the connecting part
 			pts = generateCirclePolygon(closest_point, options->link_width / 2);

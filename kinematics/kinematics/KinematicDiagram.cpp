@@ -283,7 +283,7 @@ namespace kinematics {
 				}
 				catch (char* ex) {
 					double dist;
-					cp = kinematics::closestOffsetPoint(fixed_bodies[k].polygons[0].points, joint->pos, dist);
+					cp = kinematics::closestPoint(fixed_bodies[k].polygons[0].points, joint->pos, dist);
 				}
 
 				double dist = glm::length(cp - joint->pos);
@@ -327,7 +327,7 @@ namespace kinematics {
 			}
 			catch (char* ex) {
 				double dist;
-				closest_point = kinematics::closestOffsetPoint(moving_body, joint->pos, dist);
+				closest_point = kinematics::closestPoint(moving_body, joint->pos, dist);
 			}
 
 			// Create the base of the connecting part

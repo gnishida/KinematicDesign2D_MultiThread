@@ -2,6 +2,7 @@
 #include <QFileDialog>
 #include "LinkageSynthesisOptionDialog.h"
 #include <vector>
+#include <QDateTime>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 	ui.setupUi(this);
@@ -30,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 	connect(ui.actionNew, SIGNAL(triggered()), this, SLOT(onNew()));
 	connect(ui.actionOpen, SIGNAL(triggered()), this, SLOT(onOpen()));
 	connect(ui.actionSave, SIGNAL(triggered()), this, SLOT(onSave()));
+	connect(ui.actionSaveImage, SIGNAL(triggered()), this, SLOT(onSaveImage()));
 	connect(ui.actionExit, SIGNAL(triggered()), this, SLOT(close()));
 	connect(ui.actionUndo, SIGNAL(triggered()), this, SLOT(onUndo()));
 	connect(ui.actionRedo, SIGNAL(triggered()), this, SLOT(onRedo()));
@@ -64,6 +66,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 	connect(ui.actionShowSolutions, SIGNAL(triggered()), this, SLOT(onShowSolutions()));
 	connect(ui.actionShowGridLines, SIGNAL(triggered()), this, SLOT(onShowGridLines()));
 	connect(ui.actionShowInputPoses, SIGNAL(triggered()), this, SLOT(onShowInputPoses()));
+	connect(ui.actionShowLinkage, SIGNAL(triggered()), this, SLOT(onShowLinkage()));
 
 	// create tool bar for file menu
 	ui.mainToolBar->addAction(ui.actionNew);
@@ -145,6 +148,16 @@ void MainWindow::onSave() {
 
 	canvas->save(filename);
 	setWindowTitle("Kinematic Design 2D - " + QFileInfo(filename).fileName());
+}
+
+void MainWindow::onSaveImage() {
+	if (!QDir("screenshot").exists()) {
+		QDir().mkdir("screenshot");
+	}
+	QDateTime dateTime = QDateTime().currentDateTime();
+	QString str = QString("screenshot/") + dateTime.toString("yyyyMMddhhmmss") + QString(".png");
+
+	canvas->saveImage(str);
 }
 
 void MainWindow::onUndo() {
@@ -378,5 +391,10 @@ void MainWindow::onShowGridLines() {
 
 void MainWindow::onShowInputPoses() {
 	canvas->show_input_poses = ui.actionShowInputPoses->isChecked();
+	update();
+}
+
+void MainWindow::onShowLinkage() {
+	canvas->show_linkage = ui.actionShowLinkage->isChecked();
 	update();
 }

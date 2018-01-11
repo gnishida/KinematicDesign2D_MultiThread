@@ -19,7 +19,7 @@ namespace kinematics {
 		sd = std::sqrt(var / values.size());
 	}
 
-	bool LinkageSynthesis::compare(const Particle& s1, const Particle& s2) {
+	bool LinkageSynthesis::compare(const Solution& s1, const Solution& s2) {
 		return s1.cost < s2.cost;
 	}
 
@@ -67,6 +67,15 @@ namespace kinematics {
 		return perturbed_poses;
 	}
 
+	std::vector<glm::dvec2> LinkageSynthesis::enlargePolygon(const std::vector<glm::dvec2>& polygon, const glm::dvec2& center, double scale) {
+		std::vector<glm::dvec2> result(polygon.size());
+		for (int i = 0; i < polygon.size(); i++) {
+			result[i] = (polygon[i] - center) * (double)scale + center;
+		}
+
+		return result;
+	}
+
 	/**
 	 * Create a distance map for the linkage region.
 	 */
@@ -105,7 +114,7 @@ namespace kinematics {
 	void LinkageSynthesis::particleFilter(std::vector<Solution>& solutions, const std::vector<glm::dvec2>& linkage_region_pts, const cv::Mat& dist_map, const BBox& dist_map_bbox, const std::vector<glm::dvec2>& linkage_avoidance_pts, const Object25D& moving_body, int num_particles, int num_iterations, bool record_file) {
 		BBox linkage_region_bbox = boundingBox(linkage_region_pts);
 
-		std::vector<Particle> particles(std::max((int)solutions.size(), num_particles));
+		std::vector<Solution> particles(std::max((int)solutions.size(), num_particles));
 		double max_cost = 0;
 
 		/*
@@ -118,9 +127,9 @@ namespace kinematics {
 
 		// augment
 		for (int i = 0; i < particles.size(); i++) {
-			double cost = calculateCost(solutions[i % solutions.size()], moving_body, dist_map, dist_map_bbox);
-			max_cost = std::max(max_cost, cost);
-			particles[i] = Particle(cost, solutions[i % solutions.size()]);
+			solutions[i % solutions.size()].cost = calculateCost(solutions[i % solutions.size()], moving_body, dist_map, dist_map_bbox);
+			max_cost = std::max(max_cost, solutions[i % solutions.size()].cost);
+			particles[i] = solutions[i % solutions.size()];
 		}
 
 		QFile* file;
@@ -147,11 +156,11 @@ namespace kinematics {
 		for (int iter = 0; iter < num_iterations; iter++) {
 			const int NUM_THREADS = 8;
 			std::vector<boost::thread> threads(NUM_THREADS);
-			std::vector<std::vector<Particle>> new_particles(NUM_THREADS);
+			std::vector<std::vector<Solution>> new_particles(NUM_THREADS);
 			for (int i = 0; i < threads.size(); i++) {
 				int offset1 = i * particles.size() / NUM_THREADS;
 				int offset2 = (i + 1) * particles.size() / NUM_THREADS;
-				new_particles[i] = std::vector<Particle>(particles.begin() + offset1, particles.begin() + offset2);
+				new_particles[i] = std::vector<Solution>(particles.begin() + offset1, particles.begin() + offset2);
 				threads[i] = boost::thread(&LinkageSynthesis::particleFilterThread, this, boost::ref(new_particles[i]), boost::ref(linkage_region_pts), boost::ref(linkage_region_bbox), boost::ref(dist_map), boost::ref(dist_map_bbox), boost::ref(linkage_avoidance_pts), boost::ref(moving_body));
 			}
 			for (int i = 0; i < threads.size(); i++) {
@@ -190,36 +199,32 @@ namespace kinematics {
 		sort(particles.begin(), particles.end(), compare);
 
 		// update solutions
-		solutions.resize(particles.size());
-		for (int i = 0; i < particles.size(); i++) {
-			solutions[i] = particles[i].solution;
-		}
+		solutions = particles;
 	}
 
-	void LinkageSynthesis::particleFilterThread(std::vector<Particle>& particles, const std::vector<glm::dvec2>& linkage_region_pts, const BBox& bbox, const cv::Mat& dist_map, const BBox& dist_map_bbox, const std::vector<glm::dvec2>& linkage_avoidance_pts, const Object25D& moving_body) {
+	void LinkageSynthesis::particleFilterThread(std::vector<Solution>& particles, const std::vector<glm::dvec2>& linkage_region_pts, const BBox& bbox, const cv::Mat& dist_map, const BBox& dist_map_bbox, const std::vector<glm::dvec2>& linkage_avoidance_pts, const Object25D& moving_body) {
 		// perturb the particles and calculate its score
 		for (int i = 0; i < particles.size(); i++) {
 			// pertube the joints
-			for (int j = 0; j < particles[i].solution.points.size(); j++) {
-				particles[i].solution.points[j].x += genRand(-1, 1);
-				particles[i].solution.points[j].y += genRand(-1, 1);
+			for (int j = 0; j < particles[i].points.size(); j++) {
+				particles[i].points[j].x += genRand(-1, 1);
+				particles[i].points[j].y += genRand(-1, 1);
 			}
 
-			if (optimizeCandidate(particles[i].solution.poses, linkage_region_pts, bbox, particles[i].solution.points)) {
+			if (optimizeCandidate(particles[i].poses, linkage_region_pts, bbox, particles[i].points)) {
 				// check the hard constraints
-				if (checkHardConstraints(particles[i].solution.points, particles[i].solution.poses, linkage_region_pts, linkage_avoidance_pts, moving_body)) {
+				if (checkHardConstraints(particles[i].points, particles[i].poses, linkage_region_pts, linkage_avoidance_pts, moving_body)) {
 					// calculate the score
-					double cost = calculateCost(particles[i].solution, moving_body, dist_map, dist_map_bbox);
-					particles[i] = Particle(cost, particles[i].solution);
+					particles[i].cost = calculateCost(particles[i], moving_body, dist_map, dist_map_bbox);
 				}
 				else {
 					// for the invalid point, make the cost infinity so that it will be discarded.
-					particles[i] = Particle(std::numeric_limits<double>::max(), particles[i].solution);
+					particles[i].cost = std::numeric_limits<double>::max();
 				}
 			}
 			else {
 				// for the invalid point, make the cost infinity so that it will be discarded.
-				particles[i] = Particle(std::numeric_limits<double>::max(), particles[i].solution);
+				particles[i].cost = std::numeric_limits<double>::max();
 			}
 		}
 	}
@@ -232,7 +237,7 @@ namespace kinematics {
 	 * @param resampled_particles	new resmapled particles
 	 * @param max_cost				maximum cost, which is used to normalized the cost for calculating the weight
 	 */
-	void LinkageSynthesis::resample(std::vector<Particle> particles, int N, std::vector<Particle>& resampled_particles, double max_cost) {
+	void LinkageSynthesis::resample(std::vector<Solution> particles, int N, std::vector<Solution>& resampled_particles, double max_cost) {
 		// calculate the weights of particles
 		int best_index = -1;
 		double min_cost = std::numeric_limits<double>::max();

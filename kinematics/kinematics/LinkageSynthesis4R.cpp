@@ -27,44 +27,28 @@ namespace kinematics {
 	* @param solutions1	the output solutions for the world coordinates of the driving crank at the first pose, each of which contains a pair of the center point and the circle point
 	* @param solutions2	the output solutions for the world coordinates of the follower at the first pose, each of which contains a pair of the center point and the circle point
 	*/
-	void LinkageSynthesis4R::calculateSolution(const std::vector<glm::dmat3x3>& poses, const std::vector<glm::dvec2>& linkage_region_pts, const std::vector<glm::dvec2>& linkage_avoidance_pts, int num_samples, const Object25D& moving_body, std::vector<Solution>& solutions, std::vector<glm::dvec2>& enlarged_linkage_region_pts) {
+	void LinkageSynthesis4R::calculateSolution(const std::vector<glm::dmat3x3>& poses, const std::vector<glm::dvec2>& linkage_region_pts, const std::vector<glm::dvec2>& linkage_avoidance_pts, int num_samples, const Object25D& moving_body, std::vector<Solution>& solutions) {
 		solutions.clear();
 
 		srand(0);
 
-		// calculate the center of the valid regions
+		// calculate the bounding boxe of the valid regions
 		BBox bbox = boundingBox(linkage_region_pts);
-		glm::dvec2 bbox_center = bbox.center();
-
-		for (int scale = 1; scale <= 3 && solutions.size() == 0; scale++) {
-			if (scale > 1) {
-				std::cout << "region is enlarged" << std::endl;
-			}
-
-			// calculate the enlarged linkage region for the sampling region
-			enlarged_linkage_region_pts.clear();
-			for (int i = 0; i < linkage_region_pts.size(); i++) {
-				enlarged_linkage_region_pts.push_back((linkage_region_pts[i] - bbox_center) * (double)scale + bbox_center);
-			}
-
-			// calculate the bounding boxe of the valid regions
-			BBox enlarged_bbox = boundingBox(enlarged_linkage_region_pts);
 			
-			// run multi-thread for sampling
-			const int NUM_THREADS = 8;
-			std::vector<boost::thread> threads(NUM_THREADS);
-			std::vector<std::vector<Solution>> sub_solutions(NUM_THREADS);
-			for (int i = 0; i < threads.size(); i++) {
-				threads[i] = boost::thread(&LinkageSynthesis4R::calculateSolutionThread, this, boost::ref(poses), boost::ref(enlarged_linkage_region_pts), boost::ref(enlarged_bbox), boost::ref(linkage_avoidance_pts), num_samples / NUM_THREADS, boost::ref(moving_body), boost::ref(sub_solutions[i]));
-			}
-			for (int i = 0; i < threads.size(); i++) {
-				threads[i].join();
-			}
+		// run multi-thread for sampling
+		const int NUM_THREADS = 8;
+		std::vector<boost::thread> threads(NUM_THREADS);
+		std::vector<std::vector<Solution>> sub_solutions(NUM_THREADS);
+		for (int i = 0; i < threads.size(); i++) {
+			threads[i] = boost::thread(&LinkageSynthesis4R::calculateSolutionThread, this, boost::ref(poses), boost::ref(linkage_region_pts), boost::ref(bbox), boost::ref(linkage_avoidance_pts), num_samples / NUM_THREADS, boost::ref(moving_body), boost::ref(sub_solutions[i]));
+		}
+		for (int i = 0; i < threads.size(); i++) {
+			threads[i].join();
+		}
 
-			// merge the obtained solutions
-			for (int i = 0; i < sub_solutions.size(); i++) {
-				solutions.insert(solutions.end(), sub_solutions[i].begin(), sub_solutions[i].end());
-			}
+		// merge the obtained solutions
+		for (int i = 0; i < sub_solutions.size(); i++) {
+			solutions.insert(solutions.end(), sub_solutions[i].begin(), sub_solutions[i].end());
 		}
 	}
 
@@ -89,7 +73,7 @@ namespace kinematics {
 			// check hard constraints
 			if (!checkHardConstraints(points, perturbed_poses, linkage_region_pts, linkage_avoidance_pts, moving_body)) continue;
 
-			solutions.push_back(Solution(points, position_error, orientation_error, perturbed_poses));
+			solutions.push_back(Solution(0, points, position_error, orientation_error, perturbed_poses));
 		}
 	}
 
@@ -190,7 +174,7 @@ namespace kinematics {
 			return solutions[0];
 		}
 		else {
-			return Solution({ { 0, 0 }, { 0, 2 }, { 2, 0 }, { 2, 2 } }, 0, 0, poses);
+			return Solution(0, { { 0, 0 }, { 0, 2 }, { 2, 0 }, { 2, 2 } }, 0, 0, poses);
 		}
 	}
 

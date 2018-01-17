@@ -13,6 +13,8 @@ namespace kinematics {
 
 	Kinematics::Kinematics(double simulation_speed) {
 		this->simulation_speed = simulation_speed;
+		min_angle = 0;
+		max_angle = 0;
 	}
 
 	void Kinematics::clear() {

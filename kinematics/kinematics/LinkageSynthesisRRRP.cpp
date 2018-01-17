@@ -32,8 +32,6 @@ namespace kinematics {
 
 		srand(0);
 
-		int cnt = 0;
-
 		// calculate the bounding boxe of the valid regions
 		BBox bbox = boundingBox(linkage_region_pts);
 			

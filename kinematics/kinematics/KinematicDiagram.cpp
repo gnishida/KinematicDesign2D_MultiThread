@@ -278,12 +278,15 @@ namespace kinematics {
 			double min_dist = std::numeric_limits<double>::max();
 			for (int k = 0; k < fixed_bodies.size(); k++) {
 				glm::dvec2 cp;
-				try {
-					cp = kinematics::closestOffsetPoint(fixed_bodies[k].polygons[0].points, joint->pos, options->body_margin);
-				}
-				catch (char* ex) {
-					double dist;
-					cp = kinematics::closestPoint(fixed_bodies[k].polygons[0].points, joint->pos, dist);
+				double margin = options->body_margin;
+				while (true) {
+					try {
+						cp = kinematics::closestOffsetPoint(fixed_bodies[k].polygons[0].points, joint->pos, options->body_margin);
+						break;
+					}
+					catch (char* ex) {
+						margin *= 0.8;
+					}
 				}
 
 				double dist = glm::length(cp - joint->pos);
@@ -321,12 +324,15 @@ namespace kinematics {
 		}
 		else {
 			// find the closest point of a rigid body
-			try {
-				closest_point = kinematics::closestOffsetPoint(moving_body, joint->pos, options->body_margin);
-			}
-			catch (char* ex) {
-				double dist;
-				closest_point = kinematics::closestPoint(moving_body, joint->pos, dist);
+			double margin = options->body_margin;
+			while (true) {
+				try {
+					closest_point = kinematics::closestOffsetPoint(moving_body, joint->pos, margin);
+					break;
+				}
+				catch (char* ex) {
+					margin *= 0.8;
+				}
 			}
 
 			// Create the base of the connecting part
